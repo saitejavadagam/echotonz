@@ -6,8 +6,6 @@ from tkinter import ttk
 from mutagen.mp3 import MP3
 import time
 
-
-
 mixer.init()
 
 songlist = []
@@ -15,18 +13,18 @@ songnames = []
 background = "#333333"  # light black
 
 
+# function to add songs path to the songlist
 def add_song():
     song = filedialog.askopenfilenames(initialdir='songslib/', filetypes=(("mp3 files", "*.mp3"),))
     for i in song:
-        i = str(i).replace("C:/Users/saite/PycharmProjects/musify/", "")
         if i not in songlist:
             songlist.append(i)
     addtobox()
 
 
+# function to print songs name in the terminal
 def printsong():
     for x in songlist:
-        x = x.replace('songslib/', '')
         x = x.replace('.mp3', '')
         print(x)
     print(len(songlist))
@@ -36,8 +34,10 @@ def printsong():
 count = 0
 play = False
 j = 0
+step = 0
 
 
+# function to play the song which is currently selected by cursor or in play sequence
 def play_song():
     global songlist, play, count, j
 
@@ -53,11 +53,12 @@ def play_song():
         mixer.music.play(loops=0)
         play = True
         name = "Playing:-\t" + songnames[count] + " " * 200
-        Label(root, text=name, bg=background, fg='white', font=("Arial", 16)).place(x=300, y=450)
+        Label(root, text=name, bg=background, fg='white', font=("Arial", 16)).place(x=300, y=475)
         song_bar.stop()
         startprogress()
 
 
+# function to stop the current playing song
 def stop_song():
     global play, song_bar
     mixer.music.stop()
@@ -65,6 +66,7 @@ def stop_song():
     song_bar.stop()
 
 
+# function to play the next song in the sequence
 def next_song():
     global count
     global songlist
@@ -76,6 +78,7 @@ def next_song():
     play_song()
 
 
+# function to play the previous song in the sequence
 def prev_song():
     global count
     if count >= 0:
@@ -86,6 +89,7 @@ def prev_song():
     play_song()
 
 
+# function to get the song duration in seconds
 def songlength():
     global songlist
     song = MP3(songlist[count])
@@ -94,6 +98,7 @@ def songlength():
     return length
 
 
+# creating the GUI window for the music player
 root = Tk()
 root.title('Musify')
 root.iconbitmap('icons/biticon.ico')
@@ -105,30 +110,31 @@ wf = root.winfo_width() / 600
 hf = root.winfo_height() / 300
 
 
-# creating a menu bar
-
-
+# creating a listbox for displaying songs list in the GUI window
 def displaylistbox():
-    list_box = Listbox(root, bg='black', fg='#00ff00', font=("Courier", 16), selectbackground='blue',
+    list_box = Listbox(root, bg='black', fg='#00ff00', font=("Arial", 16), selectbackground='grey', activestyle='dotbox',
                        selectforeground='white', width=300, height=15)
     return list_box
 
 
+# function to add songs in songslist to the listbox
 def addtobox():
     for i in songlist:
-        i = i.replace('songslib/', '')
         i = i.replace('.mp3', '')
-        if i not in displaybox.get(0,END):
+        i = i[i.rfind('/') + 1:]
+        if i not in displaybox.get(0, END):
             displaybox.insert(END, i)
             songnames.append(str(i))
 
 
+# progress bar function (thread)
 def startprogress():
-    global song_bar
-    song_bar['value']=0
-    step = songlength()*10
+    global song_bar, step
+    song_bar['value'] = 0
+    step = songlength() * 10
     song_bar.start(step)
-    print(step)
+
+
 
 my_menu = Menu(root)
 root.config(menu=my_menu)
@@ -139,11 +145,9 @@ toggle_display = Menu(my_menu)
 
 my_menu.add_cascade(label='File', menu=add_song_menu)
 my_menu.add_cascade(label='Print', menu=print_menu)
-add_song_menu.add_cascade(label='select one song', command=add_song)
+add_song_menu.add_cascade(label='Add songs', command=add_song)
 print_menu.add_cascade(label='Click to print song names', command=printsong)
 print_menu.add_cascade(label='Display', command=displaylistbox)
-
-# print_btn = Button(root, text='print', command=printsong).place(x=260, y=150)
 
 # images
 
