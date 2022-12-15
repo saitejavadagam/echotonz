@@ -4,7 +4,7 @@ from customtkinter import *
 from PIL import ImageTk, Image
 from tkinter import ttk
 from mutagen.mp3 import MP3
-import time
+
 
 mixer.init()
 
@@ -185,5 +185,6 @@ displaybox.pack(padx=20, pady=3)
 
 song_bar = ttk.Progressbar(root, orient='horizontal', mode='determinate', length=600)
 song_bar.place(x=320, y=555)
+
 
 root.mainloop()
