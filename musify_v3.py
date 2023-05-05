@@ -7,7 +7,7 @@ from PIL import ImageTk, Image
 from tkinter import ttk
 from mutagen.mp3 import MP3
 from threading import Thread
-
+import speech_recognition as sr
 
 mixer.init()
 
@@ -17,7 +17,6 @@ background = "#333333"  # light black
 
 
 # function to add songs path to the songlist
-
 def add_song():
     song = filedialog.askopenfilenames(initialdir='songslib/', filetypes=(("mp3 files", "*.mp3"),))
     for i in song:
@@ -36,50 +35,54 @@ def printsong():
 
 # some global variables
 count = 0
-play = False
 j = 0
 step = 0
 
-
 exit_event = threading.Event()
+
 
 # function to play the song which is currently selected by cursor or in play sequence
 def play_song():
-    global song_bar, songlist, play, count, j
-    song_bar.set(0)
-    i = displaybox.curselection()
-    if i != j:
-        if len(i) != 0:
-            count = i[0]
-    j = i
-    if len(songlist) == 0:
-        print("Songs List is empty!!...")
-    else:
+
+    if len(songlist) != 0:
+
         mixer.music.load(str(songlist[count]))
-        mixer.music.play(loops=0)
-        play = True
+        displaybox.activate(count)
+        mixer.music.play(loops=0,start=0)
         name = "Playing:-\t" + songnames[count] + " " * 200
         Label(root, text=name, bg=background, fg='white', font=("Arial", 16)).place(x=300, y=475)
 
         if not startprogress.is_alive():
             startprogress.__init__(target=progresscheck)
             startprogress.start()
-
-
+    else:
+        print("Songs List is empty!!...")
 
 
 # function to stop the current playing song
-def stop_song():
-    global play, song_bar
-    mixer.music.stop()
-    exit_event.set()
-    play = False
+def togglemusic():
+    global song_bar, songlist, count, j
+    i = displaybox.curselection()
+    if i != j:
+        if len(i) != 0:
+            count = i[0]
+            song_bar.set(0)
+            play_song()
+    elif mixer.music.get_busy():
+        mixer.music.pause()
+        play_btn.configure(image=play_img)
+    else:
+        mixer.music.unpause()
+        play_btn.configure(image=stop_img)
+    j = i
+
 
 
 # function to play the next song in the sequence
 def next_song():
     mixer.music.stop()
     exit_event.set()
+    song_bar.set(0)
     time.sleep(0.5)
     global count
     global songlist
@@ -94,6 +97,7 @@ def next_song():
 def prev_song():
     mixer.music.stop()
     exit_event.set()
+    song_bar.set(0)
     time.sleep(0.5)
     global count
     if count >= 0:
@@ -108,8 +112,6 @@ def songlength():
     global songlist
     song = MP3(songlist[count])
     return int(song.info.length)
-
-
 
 
 # creating the GUI window for the music player
@@ -127,7 +129,7 @@ hf = root.winfo_height() / 300
 # creating a listbox for displaying songs list in the GUI window
 def displaylistbox():
     list_box = Listbox(root, bg='black', fg='#00ff00', font=("Arial", 16), selectbackground='grey',
-                       activestyle='dotbox',
+                       activestyle='underline',
                        selectforeground='white', width=300, height=15)
     return list_box
 
@@ -141,18 +143,50 @@ def addtobox():
             displaybox.insert(END, i)
             songnames.append(str(i))
 
+# def speechRecognition():
+#
+#     r = sr.Recognizer()
+#
+#     with sr.Microphone as source:
+#         audio = r.listen(source)
+#
+#         try:
+#             text = r.recognize_google(audio)
+#             print('you said {}' .format(text))
+#             return text[0]
+#         except:
+#             print('sorry your voice not recognized')
+
+
 def progresscheck():
-    global song_bar,exit_event
+    global song_bar, exit_event
     song_bar.set(0)
     x = 0
+    factor = 0.1
     exit_event.clear()
-    slen = (1.04/songlength())
+    length = songlength()
+    slen = ((1 + 0.042 / factor) / length ) * factor
 
-    while mixer.music.get_busy() and not x > 1 and not exit_event.is_set():
-        x +=slen
-        song_bar.set(x)
-        time.sleep(1)
-        print(song_bar.get())
+    p,c=0,0
+
+    while not x >= 1 and not exit_event.is_set():
+        if x >= 1:break
+        if not mixer.music.get_busy():
+            time.sleep(factor)
+        else:
+            p = song_bar.get()
+            x += slen
+            song_bar.set(x)
+            time.sleep(factor)
+            c = song_bar.get()
+            if p+slen != c:
+                x = c
+                mixer.music.set_pos(song_bar.get()*length)
+    mixer.music.stop()
+
+
+
+            # print(song_bar.get())
 
 
 startprogress = Thread(target=progresscheck)
@@ -163,12 +197,15 @@ root.config(menu=my_menu)
 add_song_menu = Menu(my_menu)
 print_menu = Menu(my_menu)
 toggle_display = Menu(my_menu)
+info_menu = Menu(my_menu)
 
 my_menu.add_cascade(label='File', menu=add_song_menu)
 my_menu.add_cascade(label='Print', menu=print_menu)
+my_menu.add_cascade(label='Info', menu=info_menu)
 add_song_menu.add_cascade(label='Add songs', command=add_song)
 print_menu.add_cascade(label='Click to print song names', command=printsong)
 print_menu.add_cascade(label='Display', command=displaylistbox)
+info_menu.add_cascade(label='About')
 
 # images
 
@@ -184,11 +221,12 @@ prev_btn = CTkButton(root, text='', image=prev_img, command=prev_song, fg_color=
 
 prev_btn.place(x=400, y=600)
 
-play_btn = CTkButton(root, text='', image=play_img, command=play_song, fg_color='green', hover_color='#00ff00')
+play_btn = CTkButton(root, text='', image=play_img, command=togglemusic, fg_color='green', hover_color='#00ff00')
 
 play_btn.place(x=550, y=600)
 
-CTkButton(root, text='', image=stop_img, command=stop_song, fg_color='green', hover_color='#00ff00').place(x=550, y=640)
+# playpause = CTkButton(root, text='', image=stop_img, command=speechRecognition, fg_color='green', hover_color='#00ff00')
+# playpause.place(x=550, y=640)
 
 CTkButton(root, text='', image=next_img, command=next_song, fg_color='green', hover_color='#00ff00').place(x=700, y=600)
 
@@ -202,13 +240,8 @@ displaybox = displaylistbox()
 
 displaybox.pack(padx=20, pady=3)
 
-# progress bar
-
-song_bar = CTkSlider(master=root, width=600,hover=True)
+song_bar = CTkSlider(master=root, width=600, hover=True, progress_color="cyan", button_hover_color='red')
 song_bar.place(x=320, y=555)
 song_bar.set(0)
-
-
-
 
 root.mainloop()
